@@ -4,6 +4,7 @@ import com.example.demo.controller.records.*;
 import com.example.demo.exceptions.ApiError;
 import com.example.demo.models.auction.Auction;
 import com.example.demo.models.auction.AuctionRepository;
+import com.example.demo.models.auction.Status;
 import com.example.demo.models.auctioneer.Auctioneer;
 import com.example.demo.models.auctioneer.AuctioneerRepository;
 import jakarta.validation.ConstraintViolation;
@@ -74,6 +75,9 @@ public class AuctionRegistryController {
   public void editAuctionDraft(@PathVariable("id") Long id,
                                @RequestBody @Valid AuctionUpdateDTO toUpdate) {
     Auction auction = auctionRepository.findById(id).orElseThrow();
+    if (auction.getStatus()!= Status.DRAFT) {
+      throw new IllegalStateException("Only DRAFT auction can be edited");
+    }
     auction.setItem(toUpdate.item());
     auction.setStep(toUpdate.step());
     auction.setStart(toUpdate.start());
@@ -92,5 +96,10 @@ public class AuctionRegistryController {
         .stream().map(ConstraintViolation::getMessage)
         .collect(Collectors.joining(", "))),
         HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler
+  public ResponseEntity<ApiError> illegalStateExceptionHandler(IllegalStateException e) {
+    return new ResponseEntity(new ApiError(e.getMessage()), HttpStatus.BAD_REQUEST);
   }
 }

@@ -8,6 +8,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -40,12 +41,12 @@ public class Auction {
   @Temporal(TemporalType.TIMESTAMP)
   @Column(name = "time_from")
   @NotNull
-  private Date timeFrom;
+  private LocalDateTime timeFrom;
 
   @Temporal(TemporalType.TIMESTAMP)
   @Column(name = "time_to")
   @NotNull
-  private Date timeTo;
+  private LocalDateTime timeTo;
 
   @Column(name = "status")
   @Enumerated(EnumType.STRING)
@@ -63,13 +64,15 @@ public class Auction {
   public Auction(String item,
                  BigDecimal step,
                  BigDecimal start,
-                 Date timeFrom,
-                 Date timeTo) {
+                 LocalDateTime timeFrom,
+                 LocalDateTime timeTo,
+                 Long originalId) {
     this.item = item;
     this.step = step;
     this.start = start;
     this.timeFrom = timeFrom;
     this.timeTo = timeTo;
+    this.originalId = originalId;
     this.status = Status.RUNNING;
   }
 
@@ -89,11 +92,11 @@ public class Auction {
     return start;
   }
 
-  public Date getTimeFrom() {
+  public LocalDateTime getTimeFrom() {
     return timeFrom;
   }
 
-  public Date getTimeTo() {
+  public LocalDateTime getTimeTo() {
     return timeTo;
   }
 

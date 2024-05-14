@@ -13,7 +13,7 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
   public List<Auction> findByStatus(Status status);
 
   @Query(
-      "select a from Auction a where a.originalId = :originalId and a.status = 'RUNNING'"
+      "select a from Auction a where a.originalId = :originalId and a.status != 'CANCELED'"
   )
-  public Optional<Auction> findByOldId(Long originalId);
+  public Optional<Auction> findRunningByOldId(Long originalId);
 }

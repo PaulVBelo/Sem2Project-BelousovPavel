@@ -3,6 +3,7 @@ package com.example.demo2.controller;
 import com.example.demo2.controller.records.*;
 import com.example.demo2.exceptions.ApiError;
 import com.example.demo2.exceptions.BadBidRequestException;
+import com.example.demo2.exceptions.CredibilityNotVerifiedException;
 import com.example.demo2.models.auction.Auction;
 import com.example.demo2.models.auction.AuctionRepository;
 import com.example.demo2.models.bid.Bid;
@@ -19,6 +20,8 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -73,8 +76,21 @@ public class AuctionHostingController {
     Optional<Bid> highestBid = bidRepository.findWinningBidForAuction(id);
 
     if (highestBid.isEmpty() ||
-        highestBid.get().getBidSize().add(auction.getStep()).compareTo(bidRequestDTO.bidSize()) == 1) {
+        highestBid.get().getBidSize().add(auction.getStep()).compareTo(bidRequestDTO.bidSize()) > 0) {
       Bid bid = new Bid(bidRequestDTO.bidSize(), auction, participant);
+      // Penalty validation
+      BigDecimal sum = BigDecimal.valueOf(0);
+      List<Bid> bidList = bidRepository.findWinningBidsOfParticipant(participant.getId());
+      for (Bid b: bidList) {
+        if (b.getAuction().getId() != auction.getId()) {
+          sum = sum.add(bid.getAuction().getStart());
+        }
+      }
+      if (participant.getMoney().compareTo(sum.add(bid.getAuction().getStart())) < 0) {
+        throw new CredibilityNotVerifiedException(
+            "Not enough money to cover up all penalties in case of cancelling your victories. Please deposit " +
+            sum.add(bid.getAuction().getStart()).subtract(participant.getMoney()) + " to assert credibility.");
+      }
       return new BidResponseDTO("Bid successfully passed.");
     } else {
       throw new BadBidRequestException("Bad bid request: auction min step is " + auction.getStep() +
@@ -97,6 +113,11 @@ public class AuctionHostingController {
 
   @ExceptionHandler
   public ResponseEntity<ApiError> badBidRequestExceptionHandler(BadBidRequestException e) {
+    return new ResponseEntity(new ApiError(e.getMessage()), HttpStatus.BAD_REQUEST);
+  }
+
+  @ExceptionHandler
+  public ResponseEntity<ApiError> credibilityNotVerifiedExceptionHandler(CredibilityNotVerifiedException e) {
     return new ResponseEntity(new ApiError(e.getMessage()), HttpStatus.BAD_REQUEST);
   }
 }
