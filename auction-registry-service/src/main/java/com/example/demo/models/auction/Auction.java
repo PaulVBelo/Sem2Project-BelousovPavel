@@ -1,5 +1,6 @@
 package com.example.demo.models.auction;
 
+import com.example.demo.gateway.launchtime.AuctionLaunchTime;
 import com.example.demo.models.auctioneer.Auctioneer;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
@@ -8,6 +9,10 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
+import static jakarta.persistence.CascadeType.PERSIST;
 
 @Entity
 @Table(name = "auction")
@@ -44,6 +49,9 @@ public class Auction {
   @Column(name = "status")
   @Enumerated(EnumType.STRING)
   private Status status;
+
+  @OneToMany(mappedBy = "auction", orphanRemoval = true, cascade = PERSIST)
+  private List<AuctionLaunchTime> launchTime = new ArrayList<>();
 
   protected Auction() {}
 

@@ -22,7 +22,7 @@ public class AuctionManager {
   }
 
   public AuctionLaunchResponseDTO launchAuction(AuctionLaunchRequestDTO launchRequestDTO) {
-    Optional<Auction> optRunningAuction = auctionRepository.findRunningByOldId(launchRequestDTO.auctionId());
+    Optional<Auction> optRunningAuction = auctionRepository.findActiveByOldId(launchRequestDTO.auctionId());
     if (optRunningAuction.isEmpty()) {
       LocalDateTime launchTime = LocalDateTime.now();
       Auction auction = new Auction(
@@ -42,7 +42,7 @@ public class AuctionManager {
   }
 
   public AuctionStopResponseDTO stopAuction(AuctionStopRequestDTO stopRequestDTO) {
-    Optional<Auction> optRunningAuction = auctionRepository.findRunningByOldId(stopRequestDTO.auctionId());
+    Optional<Auction> optRunningAuction = auctionRepository.findActiveByOldId(stopRequestDTO.auctionId());
     if (optRunningAuction.isPresent()) {
       Auction auction = optRunningAuction.get();
       if (auction.getStatus() == Status.RUNNING) {

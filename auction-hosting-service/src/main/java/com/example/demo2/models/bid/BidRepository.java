@@ -9,7 +9,7 @@ import java.util.Optional;
 public interface BidRepository extends JpaRepository<Bid, Long> {
   @Query(
       "select b from Bid b " +
-          "where b.participant.id = :participantId and b.auction.status in ('RUNNING', 'AWAIT_PAYMENT', 'PAYMENT_PENDING') " +
+          "where b.participant.id = :participantId and b.auction.status in ('RUNNING', 'AWAIT_PAYMENT', 'PAYMENT_PENDING', 'AWAIT_SELFSTOP', 'SELFSTOP_PENDING') " +
           "and b.bidSize = (" +
           "select max(b2.bidSize) from Bid b2 where b2.auction.id = b.auction.id" +
           ")"

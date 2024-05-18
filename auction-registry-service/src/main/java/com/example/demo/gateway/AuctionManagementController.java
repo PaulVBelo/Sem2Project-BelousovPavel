@@ -3,6 +3,8 @@ package com.example.demo.gateway;
 import com.example.demo.exceptions.ApiError;
 import com.example.demo.exceptions.AuctionLaunchException;
 import com.example.demo.exceptions.AuctionStopException;
+import com.example.demo.gateway.launchtime.AuctionLaunchTime;
+import com.example.demo.gateway.launchtime.AuctionLaunchTimeRepository;
 import com.example.demo.gateway.records.AuctionLaunchRequestDTO;
 import com.example.demo.gateway.records.AuctionLaunchResponseDTO;
 import com.example.demo.gateway.records.AuctionStopRequestDTO;
@@ -12,11 +14,13 @@ import com.example.demo.models.auction.AuctionRepository;
 import com.example.demo.models.auction.Status;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.ratelimiter.RequestNotPermitted;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 
@@ -25,10 +29,15 @@ import java.util.UUID;
 public class AuctionManagementController {
 
   private final AuctionRepository auctionRepository;
+  private final AuctionLaunchTimeRepository auctionLaunchTimeRepository;
   private final AuctionHostingGateway gateway;
 
-  public AuctionManagementController(AuctionRepository auctionRepository, AuctionHostingGateway gateway) {
+  @Autowired
+  public AuctionManagementController(AuctionRepository auctionRepository,
+                                     AuctionLaunchTimeRepository auctionLaunchTimeRepository,
+                                     AuctionHostingGateway gateway) {
     this.auctionRepository = auctionRepository;
+    this.auctionLaunchTimeRepository = auctionLaunchTimeRepository;
     this.gateway = gateway;
   }
 
@@ -47,11 +56,13 @@ public class AuctionManagementController {
               ),
               UUID.randomUUID().toString()
           );
-      if (responseDTO.isLaunched()) {
+      if (responseDTO.isLaunched() && auctionLaunchTimeRepository.findByAuctionId(auction.getId()).isEmpty()) {
         auction.setStatus(Status.RUNNING);
+        AuctionLaunchTime launchTime =
+            new AuctionLaunchTime(auction, responseDTO.launchTime(),
+                responseDTO.launchTime().plusSeconds(auction.getDuration()));
+        auctionLaunchTimeRepository.save(launchTime);
         auctionRepository.save(auction);
-        // !!! Добавить сохранение времени запуска, можно в таблице аукционов, можно отдельно.
-        // Это полезно скорее для фронтенда, нежели работы микросервиса. UI не будет, но нужно оставить узлы для расширения.
       }
       return responseDTO;
     } else {
@@ -64,19 +75,21 @@ public class AuctionManagementController {
   @PostMapping("/{id}/stop")
   public AuctionStopResponseDTO stopAuction(@PathVariable("id") Long id) {
     Auction auction = auctionRepository.findById(id).orElseThrow();
-    if (auction.getStatus() == Status.RUNNING) {
+    if (auction.getStatus() == Status.RUNNING &&
+    auctionLaunchTimeRepository.findByAuctionId(auction.getId())
+        .get().getTimeTo().isAfter(LocalDateTime.now())) {
       AuctionStopResponseDTO responseDTO =
           gateway.stopAuction(new AuctionStopRequestDTO(auction.getId()), UUID.randomUUID().toString());
       if (responseDTO.isStopped()) {
         auction.setStatus(Status.DRAFT);
         auctionRepository.save(auction);
-        // !!! Здесь удаляем время запуска из истории.
+        auctionLaunchTimeRepository.delete(auctionLaunchTimeRepository.findByAuctionId(auction.getId()).get());
       }
       return responseDTO;
     } else {
       // Не должно происходить, но пусть будет.
       // В том плане, что кнопка пользователю не отображается... В UI которого нет... Проехали.
-      throw new AuctionStopException("Auction to be stopped wasn't running");
+      throw new AuctionStopException("Auction to be stopped wasn't running or awaits payment.");
     }
   }
 
