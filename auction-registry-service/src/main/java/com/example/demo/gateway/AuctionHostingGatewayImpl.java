@@ -47,10 +47,10 @@ public class AuctionHostingGatewayImpl implements AuctionHostingGateway{
               HttpMethod.POST,
               new HttpEntity<>(
                 Map.of(
-                  "originalId", toLaunch.auctionId(),
+                  "auctionId", toLaunch.auctionId(),
                   "item", toLaunch.item(),
                   "step", toLaunch.step(),
-                  "start", toLaunch.step(),
+                  "start", toLaunch.start(),
                   "duration", toLaunch.duration()
                 ),
                   headers),
@@ -77,7 +77,7 @@ public class AuctionHostingGatewayImpl implements AuctionHostingGateway{
               HttpMethod.POST,
               new HttpEntity<>(
                   Map.of(
-                      "originalId", toStop.auctionId()
+                      "auctionId", toStop.auctionId()
                   ),
                   headers),
               new ParameterizedTypeReference<>() {

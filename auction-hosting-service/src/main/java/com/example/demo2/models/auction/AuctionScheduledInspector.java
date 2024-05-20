@@ -27,7 +27,7 @@ public class AuctionScheduledInspector {
     //Переводит аукционы в след. состояние в зависимости от времени (и наличия ставок)
     LocalDateTime inspectionTime = LocalDateTime.now();
     List<Auction> auctionTransferList =
-        auctionRepository.findByStatusAboveTimeThreshold(Status.RUNNING, inspectionTime);
+        auctionRepository.findByStatusBelowTimeThreshold(Status.RUNNING, inspectionTime);
     for (Auction a: auctionTransferList) {
       if (a.getBids().isEmpty()) {
         a.setStatus(Status.AWAIT_SELFSTOP);
@@ -38,7 +38,7 @@ public class AuctionScheduledInspector {
     }
     List<Auction> auctionPunishList =
         auctionRepository.findByStatusBelowTimeThreshold(Status.AWAIT_PAYMENT, inspectionTime.minusWeeks(1));
-    for (Auction a: auctionTransferList) {
+    for (Auction a: auctionPunishList) {
       a.setStatus(Status.AWAIT_SELFSTOP);
       auctionRepository.save(a);
     }

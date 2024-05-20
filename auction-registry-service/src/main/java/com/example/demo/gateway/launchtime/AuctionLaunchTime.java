@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class AuctionLaunchTime {
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
-  @Column(name = "record_id")
+  @Column(name = "id")
   private Long recordId;
 
   @ManyToOne(fetch = FetchType.LAZY)

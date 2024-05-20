@@ -20,8 +20,6 @@ import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-
 @Service
 public class PaymentListener {
   private final AuctionRepository auctionRepository;
@@ -56,8 +54,6 @@ public class PaymentListener {
       if (responseDTO.type() != PaymentTransferType.AUTO_NONE) {
         Bid bid = bidRepository.findWinningBidForAuction(auction.getId()).orElseThrow();
         Participant participant = bid.getParticipant();
-        participant.setMoney(participant.getMoney().subtract(responseDTO.money()));
-        participantRepository.save(participant);
         if (responseDTO.type() == PaymentTransferType.FULL) {
           LOGGER.info("Participant " + participant.getUsername() +
               " has received item " + auction.getItem());

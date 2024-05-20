@@ -19,11 +19,6 @@ public interface AuctionRepository extends JpaRepository<Auction, Long> {
   public Optional<Auction> findActiveByOldId(Long originalId);
 
   @Query(
-      "select a from Auction a where a.status = :status and a.timeTo > :threshold"
-  )
-  public List<Auction> findByStatusAboveTimeThreshold(Status status, LocalDateTime threshold);
-
-  @Query(
       "select a from Auction a where a.status = :status and a.timeTo < :threshold"
   )
   public List<Auction> findByStatusBelowTimeThreshold(Status status, LocalDateTime threshold);

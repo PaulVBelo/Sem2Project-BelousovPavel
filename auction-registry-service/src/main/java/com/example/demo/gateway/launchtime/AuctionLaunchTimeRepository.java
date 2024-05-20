@@ -17,7 +17,7 @@ public interface AuctionLaunchTimeRepository extends JpaRepository<AuctionLaunch
   public Optional<AuctionLaunchTime> findByAuctionId(Long auctionId);
 
   @Query(
-      "select al.auction from AuctionLaunchTime al where al.timeTo > :threshold and al.auction.status = 'RUNNING'"
+      "select al.auction from AuctionLaunchTime al where al.timeTo < :threshold and al.auction.status = 'RUNNING'"
   )
   public List<Auction> findAuctionsByTimeThreshold(LocalDateTime threshold);
 }

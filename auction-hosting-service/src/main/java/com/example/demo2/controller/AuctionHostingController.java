@@ -75,8 +75,8 @@ public class AuctionHostingController {
     Participant participant = participantRepository.findById(bidRequestDTO.participantId()).orElseThrow();
     Optional<Bid> highestBid = bidRepository.findWinningBidForAuction(id);
 
-    if (highestBid.isEmpty() ||
-        highestBid.get().getBidSize().add(auction.getStep()).compareTo(bidRequestDTO.bidSize()) > 0) {
+    if ((highestBid.isEmpty() && auction.getStart().compareTo(bidRequestDTO.bidSize()) <= 0) ||
+        highestBid.get().getBidSize().add(auction.getStep()).compareTo(bidRequestDTO.bidSize()) < 0) {
       Bid bid = new Bid(bidRequestDTO.bidSize(), auction, participant);
       // Penalty validation
       BigDecimal sum = BigDecimal.valueOf(0);
@@ -86,11 +86,13 @@ public class AuctionHostingController {
           sum = sum.add(bid.getAuction().getStart());
         }
       }
-      if (participant.getMoney().compareTo(sum.add(bid.getAuction().getStart())) < 0) {
+      sum = sum.add(bid.getAuction().getStart());
+      if (participant.getMoney().compareTo(sum) < 0) {
         throw new CredibilityNotVerifiedException(
             "Not enough money to cover up all penalties in case of cancelling your victories. Please deposit " +
-            sum.add(bid.getAuction().getStart()).subtract(participant.getMoney()) + " to assert credibility.");
+            sum.subtract(participant.getMoney()) + " to assert credibility.");
       }
+      bidRepository.save(bid);
       return new BidResponseDTO("Bid successfully passed.");
     } else {
       throw new BadBidRequestException("Bad bid request: auction min step is " + auction.getStep() +

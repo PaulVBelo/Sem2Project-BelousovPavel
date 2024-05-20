@@ -41,8 +41,8 @@ public class Auction {
   @Column(name = "start")
   private BigDecimal start;
 
-  @Min(value = 3600,
-      message = "Duration must be at least 1 hour")
+  @Min(value = 600,
+      message = "Duration must be at least 10 minutes")
   @Column(name = "duration")
   private Integer duration;
 

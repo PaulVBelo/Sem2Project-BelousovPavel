@@ -2,12 +2,13 @@ package com.example.demo2.payment;
 
 import com.example.demo2.exceptions.CredibilityNotVerifiedException;
 import com.example.demo2.exceptions.PaymentException;
-import com.example.demo2.exceptions.OutboxSchedulingException;
 import com.example.demo2.models.auction.Auction;
 import com.example.demo2.models.auction.AuctionRepository;
 import com.example.demo2.models.auction.Status;
 import com.example.demo2.models.bid.Bid;
 import com.example.demo2.models.bid.BidRepository;
+import com.example.demo2.models.participant.Participant;
+import com.example.demo2.models.participant.ParticipantRepository;
 import com.example.demo2.outbox.OutboxRecord;
 import com.example.demo2.outbox.OutboxRepository;
 import com.example.demo2.payment.records.PaymentRequestDTO;
@@ -27,15 +28,18 @@ import java.util.UUID;
 public class PaymentService {
   private final OutboxRepository outboxRepository;
   private final AuctionRepository auctionRepository;
+  private final ParticipantRepository participantRepository;
   private final BidRepository bidRepository;
   private final ObjectMapper objectMapper;
 
   public PaymentService(OutboxRepository outboxRepository,
                         AuctionRepository auctionRepository,
+                        ParticipantRepository participantRepository,
                         BidRepository bidRepository,
                         ObjectMapper objectMapper) {
     this.outboxRepository = outboxRepository;
     this.auctionRepository = auctionRepository;
+    this.participantRepository = participantRepository;
     this.bidRepository = bidRepository;
     this.objectMapper = objectMapper;
   }
@@ -57,14 +61,21 @@ public class PaymentService {
         for (Bid b: winningBidsOfParticipant) {sum.add(b.getAuction().getStart());}
         sum.subtract(bid.getAuction().getStart()).add(bid.getBidSize());
         if (sum.compareTo(bid.getParticipant().getMoney()) > 0) {
-          throw new CredibilityNotVerifiedException("Not enough money to pay for all penalties");
+          throw new CredibilityNotVerifiedException("Not enough money to pay for all penalties and this lot");
         } else {
+          Participant participant = bid.getParticipant();
+          participant.setMoney(participant.getMoney().subtract(bid.getBidSize()));
+          participantRepository.save(participant);
           PaymentTransferDTO data = new PaymentTransferDTO(
               UUID.randomUUID().toString(), auction.getOriginalId(), bid.getBidSize(), PaymentTransferType.FULL
           );
           try {
             outboxRepository.save(new OutboxRecord(objectMapper.writeValueAsString(data)));
+            auction.setStatus(Status.PAYMENT_PENDING);
+            auctionRepository.save(auction);
           } catch (JsonProcessingException e) {
+            participant.setMoney(participant.getMoney().add(bid.getBidSize()));
+            participantRepository.save(participant);
             throw new PaymentException("Something went wrong! Please try again later!");
           }
         }
@@ -72,9 +83,16 @@ public class PaymentService {
         PaymentTransferDTO data = new PaymentTransferDTO(
             UUID.randomUUID().toString(), auction.getOriginalId(), auction.getStart(), PaymentTransferType.PENALTY
         );
+        Participant participant = bid.getParticipant();
+        participant.setMoney(participant.getMoney().subtract(bid.getAuction().getStart()));
+        participantRepository.save(participant);
         try {
           outboxRepository.save(new OutboxRecord(objectMapper.writeValueAsString(data)));
+          auction.setStatus(Status.PAYMENT_PENDING);
+          auctionRepository.save(auction);
         } catch (JsonProcessingException e) {
+          participant.setMoney(participant.getMoney().add(bid.getAuction().getStart()));
+          participantRepository.save(participant);
           throw new PaymentException("Something went wrong! Please try again later!");
         }
       }
@@ -97,10 +115,13 @@ public class PaymentService {
           throw new IllegalStateException("Whoops! ObjectMapper is on dope again! (Ran into error while auto-ending", e);
         }
       } else {
+        Participant participant = optBid.get().getParticipant();
+        participant.setMoney(participant.getMoney().subtract(optBid.get().getAuction().getStart()));
+        participantRepository.save(participant);
         PaymentTransferDTO data = new PaymentTransferDTO(
             UUID.randomUUID().toString(),
             auction.getOriginalId(),
-            optBid.get().getBidSize(),
+            optBid.get().getAuction().getStart(),
             PaymentTransferType.AUTO_PENALTY
         );
         try {
@@ -108,6 +129,8 @@ public class PaymentService {
           auction.setStatus(Status.SELFSTOP_PENDING);
           auctionRepository.save(auction);
         } catch (JsonProcessingException e) {
+          participant.setMoney(participant.getMoney().add(optBid.get().getAuction().getStart()));
+          participantRepository.save(participant);
           throw new IllegalStateException("Whoops! ObjectMapper is on dope again! (Ran into error while getting auto-penalty", e);
         }
       }

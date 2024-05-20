@@ -1,4 +1,4 @@
-package com.example.demo.gateway;
+package com.example.demo;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
@@ -11,8 +11,8 @@ import java.time.Duration;
 @Configuration
 public class RestTemplateConfiguration {
   @Bean
-  public RestTemplate restTemplate(@Value("${auction-hosting.base.url}") String baseUrl,
-                                   @Value("${auction-hosting.timeout.seconds}") int secondsTimeout) {
+  public RestTemplate restTemplate(@Value("${auction-hosting-service.base.url}") String baseUrl,
+                                   @Value("${auction-hosting-service.timeout.seconds}") int secondsTimeout) {
     Duration timeout = Duration.ofSeconds(secondsTimeout);
     return new RestTemplateBuilder()
         .setConnectTimeout(timeout)
